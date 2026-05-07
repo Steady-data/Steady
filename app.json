@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Steady",
+    "slug": "steady",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Steady uses your camera to scan inventory shelves and detect stock levels."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": ["android.permission.CAMERA"]
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Steady uses your camera to scan inventory shelves."
+        }
+      ]
+    ]
+  }
+}
