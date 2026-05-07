@@ -11,62 +11,119 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import { useTranslation } from '../utils/i18n';
+import { C, R, SPACING } from '../utils/theme';
 
-const PAR_MULTIPLIER = 2;
+const PAR = 2; // par level multiplier
 
-function getOrderQty(item) {
-  const par = Math.max(item.minQty * PAR_MULTIPLIER, item.minQty + 1);
-  return Math.max(par - item.qty, 0);
+function orderQty(item) {
+  return Math.max(Math.max(item.minQty * PAR, item.minQty + 1) - item.qty, 0);
 }
 
-function getStatus(item) {
-  if (item.qty === 0) return 'out';
-  if (item.qty <= item.minQty) return 'low';
+function status(item) {
+  if (item.qty === 0)                     return 'out';
+  if (item.qty <= item.minQty)            return 'low';
   return 'order';
 }
 
-function StatusBadge({ status, t }) {
-  if (status === 'out') {
-    return (
-      <View style={[styles.statusBadge, styles.statusBadgeRed]}>
-        <Text style={[styles.statusBadgeText, { color: '#FF3B30' }]}>{t('outOfStock')}</Text>
-      </View>
-    );
-  }
-  if (status === 'low') {
-    return (
-      <View style={[styles.statusBadge, styles.statusBadgeOrange]}>
-        <Text style={[styles.statusBadgeText, { color: '#FF9500' }]}>{t('lowStock')}</Text>
-      </View>
-    );
-  }
+const STATUS_META = {
+  out:   { label: 'OUT',   color: C.error,   bg: C.error   + '18' },
+  low:   { label: 'LOW',   color: C.warning, bg: C.warning + '18' },
+  order: { label: 'ORDER', color: C.accent,  bg: C.accent  + '18' },
+};
+
+/* ── Format WhatsApp message ── */
+function formatMsg(supplier, items) {
+  const lines = items.map(i => `• ${i.item}: ${i._orderQty} ${i.units || 'units'}`).join('\n');
+  return `*Order — ${supplier}*\n\n${lines}\n\n_Sent via Steady_`;
+}
+
+function openWhatsApp(supplier, items) {
+  const msg = formatMsg(supplier, items);
+  const uri = `whatsapp://send?text=${encodeURIComponent(msg)}`;
+  Linking.canOpenURL(uri).then(ok => {
+    Linking.openURL(ok ? uri : `https://wa.me/?text=${encodeURIComponent(msg)}`);
+  });
+}
+
+function openPhone() {
+  Alert.alert('Phone', 'Add a phone number to each supplier to call directly.');
+}
+
+/* ── Components ── */
+function StatusTag({ st }) {
+  const m = STATUS_META[st];
   return (
-    <View style={[styles.statusBadge, styles.statusBadgeGreen]}>
-      <Text style={[styles.statusBadgeText, { color: '#34C759' }]}>{t('toOrder')}</Text>
+    <View style={[s.tag, { backgroundColor: m.bg }]}>
+      <Text style={[s.tagText, { color: m.color }]}>{m.label}</Text>
     </View>
   );
 }
 
-function sendWhatsApp(supplier, items, t) {
-  const lines = items
-    .map(i => `• ${i.item}: ${i.orderQty} ${i.units || 'units'}`)
-    .join('\n');
-  const message = `*Order for ${supplier}*\n\n${lines}\n\n_Sent via Steady_`;
-  const url = `whatsapp://send?text=${encodeURIComponent(message)}`;
-  Linking.canOpenURL(url).then(supported => {
-    if (supported) {
-      Linking.openURL(url);
-    } else {
-      Linking.openURL(`https://wa.me/?text=${encodeURIComponent(message)}`);
-    }
-  });
+function OrderItem({ item, isLast }) {
+  const st    = item._status;
+  const bar   = STATUS_META[st].color;
+  return (
+    <View style={[s.orderRow, !isLast && s.orderRowBorder]}>
+      <View style={[s.urgBar, { backgroundColor: bar }]} />
+      <View style={s.orderContent}>
+        <View style={s.orderLeft}>
+          <Text style={s.orderName} numberOfLines={1}>{item.item}</Text>
+          <Text style={s.orderMeta}>
+            In stock: <Text style={{ color: C.text }}>{item.qty}</Text>
+            {'   '}Min: <Text style={{ color: C.text }}>{item.minQty}</Text>
+          </Text>
+        </View>
+        <View style={s.orderRight}>
+          <StatusTag st={st} />
+          <View style={s.qtyBox}>
+            <Text style={s.qtyNum}>{item._orderQty}</Text>
+            <Text style={s.qtyLabel}>need</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
 }
 
-function sendPhone(supplier) {
-  Alert.alert(
-    supplier,
-    'No phone number stored for this supplier. Add one in the supplier details.',
-    [{ text: 'OK' }]
+function SupplierCard({ group }) {
+  const { t } = useTranslation();
+  return (
+    <View style={s.card}>
+      {/* Card header */}
+      <View style={s.cardHeader}>
+        <View style={s.supplierLeft}>
+          <View style={s.supplierIcon}>
+            <Ionicons name="business" size={14} color={C.text2} />
+          </View>
+          <View>
+            <Text style={s.supplierName} numberOfLines={1}>{group.supplier}</Text>
+            <Text style={s.supplierSub}>{group.items.length} item{group.items.length !== 1 ? 's' : ''}</Text>
+          </View>
+        </View>
+        <View style={s.sendRow}>
+          <TouchableOpacity
+            style={s.sendBtn}
+            onPress={() => openWhatsApp(group.supplier, group.items)}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="logo-whatsapp" size={15} color={C.bg} />
+            <Text style={s.sendBtnText}>{t('sendOrder')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={s.phoneBtn}
+            onPress={openPhone}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="call" size={15} color={C.text2} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Item rows */}
+      {group.items.map((item, idx) => (
+        <OrderItem key={item.id} item={item} isLast={idx === group.items.length - 1} />
+      ))}
+    </View>
   );
 }
 
@@ -74,331 +131,287 @@ export default function OrdersScreen() {
   const { inventory } = useApp();
   const { t } = useTranslation();
 
-  const supplierGroups = useMemo(() => {
-    const orderItems = inventory
-      .map(item => ({ ...item, orderQty: getOrderQty(item), status: getStatus(item) }))
-      .filter(item => item.orderQty > 0);
+  const groups = useMemo(() => {
+    const enriched = inventory
+      .map(i => ({ ...i, _orderQty: orderQty(i), _status: status(i) }))
+      .filter(i => i._orderQty > 0);
 
-    const grouped = {};
-    orderItems.forEach(item => {
-      const sup = item.supplier || 'Unknown';
-      if (!grouped[sup]) grouped[sup] = [];
-      grouped[sup].push(item);
+    const bySupplier = {};
+    enriched.forEach(i => {
+      const sup = i.supplier || 'Unknown';
+      if (!bySupplier[sup]) bySupplier[sup] = [];
+      bySupplier[sup].push(i);
     });
 
-    // Sort each group: out-of-stock first, then low stock, then regular
-    const statusOrder = { out: 0, low: 1, order: 2 };
-    return Object.entries(grouped)
-      .map(([supplier, items]) => ({
-        supplier,
-        items: [...items].sort((a, b) => statusOrder[a.status] - statusOrder[b.status]),
-        totalItems: items.length,
-        hasUrgent: items.some(i => i.status === 'out' || i.status === 'low'),
-      }))
-      .sort((a, b) => (b.hasUrgent ? 1 : 0) - (a.hasUrgent ? 1 : 0));
+    const ORDER = { out: 0, low: 1, order: 2 };
+    return Object.entries(bySupplier).map(([supplier, items]) => ({
+      supplier,
+      items: [...items].sort((a, b) => ORDER[a._status] - ORDER[b._status]),
+    })).sort((a, b) => {
+      const urgA = a.items.some(i => i._status !== 'order') ? 0 : 1;
+      const urgB = b.items.some(i => i._status !== 'order') ? 0 : 1;
+      return urgA - urgB;
+    });
   }, [inventory]);
 
-  if (supplierGroups.length === 0) {
+  /* ── Summary KPIs ── */
+  const totalOut  = inventory.filter(i => i.qty === 0).length;
+  const totalLow  = inventory.filter(i => i.qty > 0 && i.qty <= i.minQty).length;
+  const totalOrder = groups.reduce((sum, g) => sum + g.items.length, 0);
+
+  if (groups.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
-        <View style={styles.emptyIcon}>
-          <Text style={styles.emptyIconText}>✓</Text>
+      <View style={s.emptyRoot}>
+        <View style={s.emptyIcon}>
+          <Ionicons name="checkmark" size={36} color={C.accent} />
         </View>
-        <Text style={styles.emptyTitle}>{t('noOrders')}</Text>
+        <Text style={s.emptyTitle}>All Stocked Up</Text>
+        <Text style={s.emptyBody}>{t('noOrders')}</Text>
       </View>
     );
   }
 
-  const renderGroup = ({ item: group }) => (
-    <View style={styles.supplierCard}>
-      {/* Supplier Header */}
-      <View style={styles.supplierHeader}>
-        <View style={styles.supplierInfo}>
-          <Ionicons name="business-outline" size={18} color="#000000" />
-          <Text style={styles.supplierName}>{group.supplier}</Text>
-          <View style={styles.itemCountBadge}>
-            <Text style={styles.itemCountText}>{group.totalItems}</Text>
-          </View>
-        </View>
-        <View style={styles.sendButtons}>
-          <TouchableOpacity
-            style={styles.sendBtn}
-            onPress={() => sendWhatsApp(group.supplier, group.items, t)}
-            activeOpacity={0.75}
-          >
-            <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
-            <Text style={styles.sendBtnText}>{t('sendOrder')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.sendBtn, styles.sendBtnPhone]}
-            onPress={() => sendPhone(group.supplier)}
-            activeOpacity={0.75}
-          >
-            <Ionicons name="call-outline" size={16} color="#000000" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Items */}
-      {group.items.map((item, idx) => (
-        <View
-          key={item.id}
-          style={[
-            styles.orderItem,
-            idx < group.items.length - 1 && styles.orderItemBorder,
-          ]}
-        >
-          <View style={[styles.urgencyBar, item.status === 'out' && styles.urgencyRed, item.status === 'low' && styles.urgencyOrange, item.status === 'order' && styles.urgencyGreen]} />
-          <View style={styles.orderItemContent}>
-            <View style={styles.orderItemLeft}>
-              <Text style={styles.orderItemName}>{item.item}</Text>
-              <Text style={styles.orderItemStock}>
-                {t('currentQty')}: {item.qty}  ·  Min: {item.minQty}
-              </Text>
-            </View>
-            <View style={styles.orderItemRight}>
-              <StatusBadge status={item.status} t={t} />
-              <View style={styles.orderQtyBox}>
-                <Text style={styles.orderQtyLabel}>{t('suggestedOrder')}</Text>
-                <Text style={styles.orderQty}>{item.orderQty}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-
   return (
-    <View style={styles.container}>
-      {/* Legend */}
-      <View style={styles.legend}>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#FF3B30' }]} />
-          <Text style={styles.legendText}>{t('outOfStock')}</Text>
+    <View style={s.root}>
+
+      {/* KPI strip */}
+      <View style={s.kpiStrip}>
+        <View style={s.kpi}>
+          <Text style={[s.kpiNum, { color: C.error }]}>{totalOut}</Text>
+          <Text style={s.kpiLabel}>{t('outOfStock')}</Text>
         </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#FF9500' }]} />
-          <Text style={styles.legendText}>{t('lowStock')}</Text>
+        <View style={s.kpiDivider} />
+        <View style={s.kpi}>
+          <Text style={[s.kpiNum, { color: C.warning }]}>{totalLow}</Text>
+          <Text style={s.kpiLabel}>{t('lowStock')}</Text>
         </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#34C759' }]} />
-          <Text style={styles.legendText}>{t('toOrder')}</Text>
+        <View style={s.kpiDivider} />
+        <View style={s.kpi}>
+          <Text style={[s.kpiNum, { color: C.accent }]}>{totalOrder}</Text>
+          <Text style={s.kpiLabel}>To Order</Text>
         </View>
       </View>
 
       <FlatList
-        data={supplierGroups}
-        keyExtractor={group => group.supplier}
-        renderItem={renderGroup}
-        contentContainerStyle={styles.listContent}
+        data={groups}
+        keyExtractor={g => g.supplier}
+        renderItem={({ item: group }) => <SupplierCard group={group} />}
+        contentContainerStyle={s.list}
         showsVerticalScrollIndicator={false}
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F2F2F7',
+const s = StyleSheet.create({
+  root: {
+    flex:            1,
+    backgroundColor: C.bg,
   },
-  legend: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#C6C6C8',
-    gap: 20,
+
+  /* KPI strip */
+  kpiStrip: {
+    flexDirection:   'row',
+    backgroundColor: C.surface,
+    marginHorizontal: SPACING.m,
+    marginTop:       SPACING.m,
+    borderRadius:    R,
+    paddingVertical: SPACING.m,
   },
-  legendItem: {
-    flexDirection: 'row',
+  kpi: {
+    flex:       1,
     alignItems: 'center',
-    gap: 6,
   },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  kpiNum: {
+    fontSize:   24,
+    fontWeight: '700',
+    color:      C.text,
+    lineHeight: 28,
   },
-  legendText: {
-    fontSize: 12,
-    color: '#3C3C43',
-    fontWeight: '500',
+  kpiLabel: {
+    fontSize:  11,
+    fontWeight:'500',
+    color:     C.text2,
+    marginTop: 2,
   },
-  listContent: {
-    padding: 16,
-    gap: 16,
+  kpiDivider: {
+    width:           1,
+    backgroundColor: C.surface2,
+    marginVertical:  4,
+  },
+
+  /* List */
+  list: {
+    padding:      SPACING.m,
+    gap:          SPACING.m,
     paddingBottom: 100,
   },
-  supplierCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+
+  /* Supplier card */
+  card: {
+    backgroundColor: C.surface,
+    borderRadius:    R,
+    overflow:        'hidden',
   },
-  supplierHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#F2F2F7',
-    gap: 12,
+  cardHeader: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'space-between',
+    paddingHorizontal: SPACING.m,
+    paddingVertical:   SPACING.m,
+    borderBottomWidth: 1,
+    borderBottomColor: C.surface2,
   },
-  supplierInfo: {
+  supplierLeft: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
+    alignItems:    'center',
+    gap:           SPACING.s,
+    flex:          1,
+    marginRight:   SPACING.s,
+  },
+  supplierIcon: {
+    width:           32,
+    height:          32,
+    borderRadius:    R,
+    backgroundColor: C.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
   },
   supplierName: {
-    fontSize: 15,
+    fontSize:   15,
     fontWeight: '700',
-    color: '#000000',
-    flex: 1,
+    color:      C.text,
   },
-  itemCountBadge: {
-    backgroundColor: '#F2F2F7',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+  supplierSub: {
+    fontSize:  12,
+    color:     C.text2,
+    marginTop: 1,
   },
-  itemCountText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#8E8E93',
-  },
-  sendButtons: {
+  sendRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap:           SPACING.s,
   },
   sendBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#F2F2F7',
-    borderRadius: 10,
-  },
-  sendBtnPhone: {
-    paddingHorizontal: 10,
+    flexDirection:   'row',
+    alignItems:      'center',
+    gap:             6,
+    height:          36,
+    paddingHorizontal: SPACING.m,
+    backgroundColor: C.accent,
+    borderRadius:    R,
   },
   sendBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#000000',
+    fontSize:   13,
+    fontWeight: '700',
+    color:      C.bg,
   },
-  orderItem: {
+  phoneBtn: {
+    width:           36,
+    height:          36,
+    borderRadius:    R,
+    backgroundColor: C.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+
+  /* Order item row */
+  orderRow: {
     flexDirection: 'row',
-    alignItems: 'stretch',
+    alignItems:    'stretch',
   },
-  orderItemBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#F2F2F7',
+  orderRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: C.surface2,
   },
-  urgencyBar: {
+  urgBar: {
     width: 4,
   },
-  urgencyRed: {
-    backgroundColor: '#FF3B30',
+  orderContent: {
+    flex:            1,
+    flexDirection:   'row',
+    alignItems:      'center',
+    paddingHorizontal: SPACING.m,
+    paddingVertical:   SPACING.m,
+    gap:             SPACING.m,
   },
-  urgencyOrange: {
-    backgroundColor: '#FF9500',
-  },
-  urgencyGreen: {
-    backgroundColor: '#34C759',
-  },
-  orderItemContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 12,
-  },
-  orderItemLeft: {
+  orderLeft: {
     flex: 1,
   },
-  orderItemName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#000000',
-    marginBottom: 3,
+  orderName: {
+    fontSize:     15,
+    fontWeight:   '600',
+    color:        C.text,
+    marginBottom: 4,
   },
-  orderItemStock: {
+  orderMeta: {
     fontSize: 12,
-    color: '#8E8E93',
+    color:    C.text2,
   },
-  orderItemRight: {
+  orderRight: {
     alignItems: 'flex-end',
-    gap: 6,
+    gap:        SPACING.s,
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+
+  /* Status tag */
+  tag: {
+    paddingHorizontal: SPACING.s,
+    paddingVertical:   3,
+    borderRadius:      R,
   },
-  statusBadgeRed: { backgroundColor: '#FF3B3015' },
-  statusBadgeOrange: { backgroundColor: '#FF950015' },
-  statusBadgeGreen: { backgroundColor: '#34C75915' },
-  statusBadgeText: {
-    fontSize: 11,
+  tagText: {
+    fontSize:      10,
+    fontWeight:    '700',
+    letterSpacing: 0.6,
+  },
+
+  /* Order qty box */
+  qtyBox: {
+    alignItems:      'center',
+    backgroundColor: C.surface2,
+    borderRadius:    R,
+    paddingHorizontal: SPACING.s,
+    paddingVertical:   4,
+    minWidth:        40,
+  },
+  qtyNum: {
+    fontSize:   20,
     fontWeight: '700',
+    color:      C.text,
+    lineHeight: 24,
+  },
+  qtyLabel: {
+    fontSize:   9,
+    fontWeight: '600',
+    color:      C.text2,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
-  orderQtyBox: {
-    alignItems: 'center',
-    backgroundColor: '#F2F2F7',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  orderQtyLabel: {
-    fontSize: 10,
-    color: '#8E8E93',
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-  },
-  orderQty: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#000000',
-    lineHeight: 22,
-  },
-  emptyContainer: {
-    flex: 1,
-    backgroundColor: '#F2F2F7',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 20,
+
+  /* Empty */
+  emptyRoot: {
+    flex:            1,
+    backgroundColor: C.bg,
+    alignItems:      'center',
+    justifyContent:  'center',
+    gap:             SPACING.m,
   },
   emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#34C75920',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyIconText: {
-    fontSize: 36,
-    color: '#34C759',
+    width:           72,
+    height:          72,
+    borderRadius:    R,
+    backgroundColor: C.accent + '18',
+    alignItems:      'center',
+    justifyContent:  'center',
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#3C3C43',
-    textAlign: 'center',
-    lineHeight: 26,
+    fontSize:   22,
+    fontWeight: '700',
+    color:      C.text,
+  },
+  emptyBody: {
+    fontSize:   14,
+    color:      C.text2,
+    textAlign:  'center',
+    lineHeight: 22,
   },
 });

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useApp } from '../context/AppContext';
+import { C, R, SPACING } from '../utils/theme';
 
 export default function GlobalFABs() {
   const { isLoggedIn, language, toggleLanguage } = useApp();
@@ -8,38 +9,35 @@ export default function GlobalFABs() {
   if (!isLoggedIn) return null;
 
   return (
-    <View style={styles.container} pointerEvents="box-none">
-      <TouchableOpacity style={styles.fab} onPress={toggleLanguage} activeOpacity={0.85}>
-        <Text style={styles.fabText}>{language === 'en' ? 'עב' : 'EN'}</Text>
+    <View style={s.wrap} pointerEvents="box-none">
+      <TouchableOpacity style={s.fab} onPress={toggleLanguage} activeOpacity={0.85}>
+        <Text style={s.fabText}>{language === 'en' ? 'עב' : 'EN'}</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    bottom: 90,
-    right: 20,
-    pointerEvents: 'box-none',
+const s = StyleSheet.create({
+  wrap: {
+    position:       'absolute',
+    bottom:         SPACING.l + 56 + SPACING.s, // clears tab bar + room
+    right:          SPACING.m,
+    pointerEvents:  'box-none',
   },
   fab: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#000000',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 8,
+    width:           44,
+    height:          44,
+    borderRadius:    R,
+    backgroundColor: C.surface,
+    borderWidth:     1,
+    borderColor:     C.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
   },
   fabText: {
-    color: '#FFFFFF',
-    fontSize: 13,
+    fontSize:   12,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    color:      C.text2,
+    letterSpacing: 0.4,
   },
 });

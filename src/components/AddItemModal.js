@@ -13,260 +13,277 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../utils/i18n';
+import { C, R, SPACING } from '../utils/theme';
 
-const CATEGORIES = ['Whiskey', 'Tequila', 'Rum', 'Vodka', 'Gin', 'Liqueurs', 'Dry Goods', 'Other'];
+const CATEGORIES = ['Whiskey','Tequila','Rum','Vodka','Gin','Liqueurs','Dry Goods','Other'];
 
-const EMPTY_FORM = {
-  item: '',
-  units: 'bottle',
-  category: 'Other',
-  qty: '0',
-  minQty: '2',
-  costPrice: '',
-  barcode: '',
+const EMPTY = {
+  item:            '',
+  units:           'bottle',
+  category:        'Other',
+  qty:             '0',
+  minQty:          '2',
+  costPrice:       '',
+  barcode:         '',
   storageLocation: '',
-  expirationDate: '',
-  notes: '',
-  supplier: '',
+  expirationDate:  '',
+  notes:           '',
+  supplier:        '',
 };
+
+/* ── Field wrapper ── */
+function Field({ label, children }) {
+  return (
+    <View style={s.field}>
+      <Text style={s.fieldLabel}>{label}</Text>
+      {children}
+    </View>
+  );
+}
 
 export default function AddItemModal({ visible, onClose, onSave, editItem }) {
   const { t } = useTranslation();
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(EMPTY);
 
   useEffect(() => {
-    if (visible) {
-      if (editItem) {
-        setForm({
-          item: editItem.item || '',
-          units: editItem.units || 'bottle',
-          category: editItem.category || 'Other',
-          qty: String(editItem.qty ?? 0),
-          minQty: String(editItem.minQty ?? 2),
-          costPrice: editItem.costPrice ? String(editItem.costPrice) : '',
-          barcode: editItem.barcode || '',
-          storageLocation: editItem.storageLocation || '',
-          expirationDate: editItem.expirationDate || '',
-          notes: editItem.notes || '',
-          supplier: editItem.supplier || '',
-        });
-      } else {
-        setForm(EMPTY_FORM);
-      }
+    if (!visible) return;
+    if (editItem) {
+      setForm({
+        item:            editItem.item            || '',
+        units:           editItem.units           || 'bottle',
+        category:        editItem.category        || 'Other',
+        qty:             String(editItem.qty      ?? 0),
+        minQty:          String(editItem.minQty   ?? 2),
+        costPrice:       editItem.costPrice       ? String(editItem.costPrice) : '',
+        barcode:         editItem.barcode         || '',
+        storageLocation: editItem.storageLocation || '',
+        expirationDate:  editItem.expirationDate  || '',
+        notes:           editItem.notes           || '',
+        supplier:        editItem.supplier        || '',
+      });
+    } else {
+      setForm(EMPTY);
     }
   }, [visible, editItem]);
 
-  const update = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   const handleSave = () => {
     if (!form.item.trim()) {
-      Alert.alert('', 'Item name is required.');
+      Alert.alert('Required', 'Item name cannot be empty.');
       return;
     }
-    const saved = {
+    onSave({
       ...(editItem || {}),
-      item: form.item.trim(),
-      units: form.units.trim() || 'unit',
-      category: form.category,
-      qty: parseInt(form.qty, 10) || 0,
-      minQty: parseInt(form.minQty, 10) || 1,
-      costPrice: parseFloat(form.costPrice) || 0,
-      barcode: form.barcode.trim(),
+      item:            form.item.trim(),
+      units:           form.units.trim() || 'unit',
+      category:        form.category,
+      qty:             parseInt(form.qty,       10) || 0,
+      minQty:          parseInt(form.minQty,    10) || 1,
+      costPrice:       parseFloat(form.costPrice)  || 0,
+      barcode:         form.barcode.trim(),
       storageLocation: form.storageLocation.trim(),
-      expirationDate: form.expirationDate.trim(),
-      notes: form.notes.trim(),
-      supplier: form.supplier.trim() || 'Unknown',
-    };
-    onSave(saved);
+      expirationDate:  form.expirationDate.trim(),
+      notes:           form.notes.trim(),
+      supplier:        form.supplier.trim() || 'Unknown',
+    });
   };
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <KeyboardAvoidingView
-        style={styles.flex}
+        style={s.kav}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
-              <Text style={styles.cancelText}>{t('cancel')}</Text>
+        <View style={s.root}>
+
+          {/* Sheet handle + header */}
+          <View style={s.handle} />
+          <View style={s.header}>
+            <TouchableOpacity onPress={onClose} style={s.headerSide} activeOpacity={0.7}>
+              <Text style={s.cancelText}>{t('cancel')}</Text>
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>
+            <Text style={s.headerTitle}>
               {editItem ? t('editItem') : t('newItem')}
             </Text>
-            <TouchableOpacity onPress={handleSave} style={styles.headerBtn}>
-              <Text style={styles.saveText}>{t('save')}</Text>
+            <TouchableOpacity onPress={handleSave} style={[s.headerSide, s.headerSideRight]} activeOpacity={0.85}>
+              <Text style={s.saveText}>{t('save')}</Text>
             </TouchableOpacity>
           </View>
 
           <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
+            style={s.scroll}
+            contentContainerStyle={s.scrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Item Name */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>{t('itemName')}</Text>
+
+            {/* ── Item name ── */}
+            <Field label={t('itemName')}>
               <TextInput
-                style={styles.input}
+                style={[s.input, s.inputLarge]}
                 value={form.item}
-                onChangeText={v => update('item', v)}
-                placeholder={t('itemName')}
-                placeholderTextColor="#8E8E93"
+                onChangeText={v => set('item', v)}
+                placeholder="e.g. Jameson Whiskey"
+                placeholderTextColor={C.text2}
                 returnKeyType="next"
                 autoFocus={!editItem}
+                selectionColor={C.accent}
               />
-            </View>
+            </Field>
 
-            {/* Units + Current Qty in a row */}
-            <View style={styles.row}>
-              <View style={[styles.section, styles.flex]}>
-                <Text style={styles.sectionLabel}>{t('units')}</Text>
+            {/* ── Row: Units + Current Qty ── */}
+            <View style={s.row}>
+              <Field label={t('units')} style={s.flex}>
                 <TextInput
-                  style={styles.input}
+                  style={s.input}
                   value={form.units}
-                  onChangeText={v => update('units', v)}
+                  onChangeText={v => set('units', v)}
                   placeholder="bottle"
-                  placeholderTextColor="#8E8E93"
+                  placeholderTextColor={C.text2}
+                  selectionColor={C.accent}
                 />
-              </View>
-              <View style={[styles.section, styles.flex]}>
-                <Text style={styles.sectionLabel}>{t('currentQty')}</Text>
+              </Field>
+              <Field label={t('currentQty')} style={s.flex}>
                 <TextInput
-                  style={styles.input}
+                  style={s.input}
                   value={form.qty}
-                  onChangeText={v => update('qty', v.replace(/[^0-9]/g, ''))}
+                  onChangeText={v => set('qty', v.replace(/[^0-9]/g, ''))}
                   keyboardType="numeric"
                   placeholder="0"
-                  placeholderTextColor="#8E8E93"
+                  placeholderTextColor={C.text2}
+                  selectionColor={C.accent}
                 />
-              </View>
+              </Field>
             </View>
 
-            {/* Min Qty + Cost Price in a row */}
-            <View style={styles.row}>
-              <View style={[styles.section, styles.flex]}>
-                <Text style={styles.sectionLabel}>{t('minQty')}</Text>
+            {/* ── Row: Min Qty + Cost Price ── */}
+            <View style={s.row}>
+              <Field label={t('minQty')} style={s.flex}>
                 <TextInput
-                  style={styles.input}
+                  style={s.input}
                   value={form.minQty}
-                  onChangeText={v => update('minQty', v.replace(/[^0-9]/g, ''))}
+                  onChangeText={v => set('minQty', v.replace(/[^0-9]/g, ''))}
                   keyboardType="numeric"
                   placeholder="2"
-                  placeholderTextColor="#8E8E93"
+                  placeholderTextColor={C.text2}
+                  selectionColor={C.accent}
                 />
-              </View>
-              <View style={[styles.section, styles.flex]}>
-                <Text style={styles.sectionLabel}>{t('costPrice')}</Text>
+              </Field>
+              <Field label={t('costPrice')} style={s.flex}>
                 <TextInput
-                  style={styles.input}
+                  style={s.input}
                   value={form.costPrice}
-                  onChangeText={v => update('costPrice', v.replace(/[^0-9.]/g, ''))}
+                  onChangeText={v => set('costPrice', v.replace(/[^0-9.]/g, ''))}
                   keyboardType="decimal-pad"
                   placeholder="0.00"
-                  placeholderTextColor="#8E8E93"
+                  placeholderTextColor={C.text2}
+                  selectionColor={C.accent}
                 />
-              </View>
+              </Field>
             </View>
 
-            {/* Category */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>{t('category')}</Text>
+            {/* ── Category chips ── */}
+            <Field label={t('category')}>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.categoryRow}
+                contentContainerStyle={s.chips}
               >
-                {CATEGORIES.map(cat => (
-                  <TouchableOpacity
-                    key={cat}
-                    style={[
-                      styles.categoryChip,
-                      form.category === cat && styles.categoryChipActive,
-                    ]}
-                    onPress={() => update('category', cat)}
-                  >
-                    <Text
-                      style={[
-                        styles.categoryChipText,
-                        form.category === cat && styles.categoryChipTextActive,
-                      ]}
+                {CATEGORIES.map(cat => {
+                  const active = form.category === cat;
+                  return (
+                    <TouchableOpacity
+                      key={cat}
+                      style={[s.chip, active && s.chipActive]}
+                      onPress={() => set('category', cat)}
+                      activeOpacity={0.7}
                     >
-                      {t(`categories.${cat}`)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                      <Text style={[s.chipText, active && s.chipTextActive]}>
+                        {t(`categories.${cat}`)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </ScrollView>
-            </View>
+            </Field>
 
-            {/* Supplier */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>{t('supplier')}</Text>
+            {/* ── Supplier ── */}
+            <Field label={t('supplier')}>
               <TextInput
-                style={styles.input}
+                style={s.input}
                 value={form.supplier}
-                onChangeText={v => update('supplier', v)}
+                onChangeText={v => set('supplier', v)}
                 placeholder="Supplier name"
-                placeholderTextColor="#8E8E93"
+                placeholderTextColor={C.text2}
+                selectionColor={C.accent}
               />
-            </View>
+            </Field>
 
-            {/* Barcode */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>{t('barcode')}</Text>
-              <TextInput
-                style={styles.input}
-                value={form.barcode}
-                onChangeText={v => update('barcode', v)}
-                placeholder="0000000000000"
-                placeholderTextColor="#8E8E93"
-                keyboardType="numeric"
-              />
-            </View>
+            {/* ── Barcode ── */}
+            <Field label={t('barcode')}>
+              <View style={s.inputRow}>
+                <TextInput
+                  style={[s.input, s.flex]}
+                  value={form.barcode}
+                  onChangeText={v => set('barcode', v)}
+                  placeholder="Scan or enter barcode"
+                  placeholderTextColor={C.text2}
+                  keyboardType="numeric"
+                  selectionColor={C.accent}
+                />
+                <View style={s.barcodeIcon}>
+                  <Ionicons name="barcode-outline" size={20} color={C.text2} />
+                </View>
+              </View>
+            </Field>
 
-            {/* Storage Location */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>{t('storageLocation')}</Text>
+            {/* ── Storage Location ── */}
+            <Field label={t('storageLocation')}>
               <TextInput
-                style={styles.input}
+                style={s.input}
                 value={form.storageLocation}
-                onChangeText={v => update('storageLocation', v)}
+                onChangeText={v => set('storageLocation', v)}
                 placeholder="e.g. Bar, Cellar, Fridge"
-                placeholderTextColor="#8E8E93"
+                placeholderTextColor={C.text2}
+                selectionColor={C.accent}
               />
-            </View>
+            </Field>
 
-            {/* Expiration Date */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>{t('expirationDate')}</Text>
+            {/* ── Expiration Date ── */}
+            <Field label={t('expirationDate')}>
               <TextInput
-                style={styles.input}
+                style={s.input}
                 value={form.expirationDate}
-                onChangeText={v => update('expirationDate', v)}
+                onChangeText={v => set('expirationDate', v)}
                 placeholder="MM/DD/YYYY"
-                placeholderTextColor="#8E8E93"
+                placeholderTextColor={C.text2}
                 keyboardType="numbers-and-punctuation"
+                selectionColor={C.accent}
               />
-            </View>
+            </Field>
 
-            {/* Notes */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>{t('notes')}</Text>
+            {/* ── Notes ── */}
+            <Field label={t('notes')}>
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[s.input, s.textArea]}
                 value={form.notes}
-                onChangeText={v => update('notes', v)}
-                placeholder="Additional notes..."
-                placeholderTextColor="#8E8E93"
+                onChangeText={v => set('notes', v)}
+                placeholder="Additional notes…"
+                placeholderTextColor={C.text2}
                 multiline
                 numberOfLines={3}
                 textAlignVertical="top"
+                selectionColor={C.accent}
               />
-            </View>
+            </Field>
 
-            <View style={{ height: 40 }} />
+            {/* Save button (bottom of scroll for accessibility) */}
+            <TouchableOpacity style={s.saveBtn} onPress={handleSave} activeOpacity={0.85}>
+              <Text style={s.saveBtnText}>{t('save')}</Text>
+            </TouchableOpacity>
+
+            <View style={{ height: SPACING.xxl }} />
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
@@ -274,101 +291,155 @@ export default function AddItemModal({ visible, onClose, onSave, editItem }) {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  container: {
-    flex: 1,
-    backgroundColor: '#F2F2F7',
+const s = StyleSheet.create({
+  kav: { flex: 1 },
+  root: {
+    flex:            1,
+    backgroundColor: C.bg,
+  },
+
+  /* Handle + header */
+  handle: {
+    width:           40,
+    height:          4,
+    borderRadius:    R,
+    backgroundColor: C.surface2,
+    alignSelf:       'center',
+    marginTop:       SPACING.s,
+    marginBottom:    SPACING.s,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#C6C6C8',
+    flexDirection:   'row',
+    alignItems:      'center',
+    paddingHorizontal: SPACING.m,
+    paddingBottom:   SPACING.m,
+    borderBottomWidth: 1,
+    borderBottomColor: C.surface2,
   },
-  headerBtn: {
-    minWidth: 70,
+  headerSide: {
+    minWidth: 64,
+  },
+  headerSideRight: {
+    alignItems: 'flex-end',
   },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#000000',
+    flex:       1,
+    fontSize:   17,
+    fontWeight: '700',
+    color:      C.text,
+    textAlign:  'center',
   },
   cancelText: {
-    fontSize: 17,
-    color: '#8E8E93',
-  },
-  saveText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#000000',
-    textAlign: 'right',
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    gap: 4,
-  },
-  section: {
-    marginBottom: 16,
-  },
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#8E8E93',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  input: {
-    height: 48,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: '#000000',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#C6C6C8',
-  },
-  textArea: {
-    height: 88,
-    paddingTop: 12,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  categoryRow: {
-    gap: 8,
-    paddingRight: 4,
-  },
-  categoryChip: {
-    height: 36,
-    paddingHorizontal: 16,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#C6C6C8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  categoryChipActive: {
-    backgroundColor: '#000000',
-    borderColor: '#000000',
-  },
-  categoryChipText: {
-    fontSize: 14,
-    color: '#000000',
+    fontSize:   16,
+    color:      C.text2,
     fontWeight: '500',
   },
-  categoryChipTextActive: {
-    color: '#FFFFFF',
+  saveText: {
+    fontSize:   16,
+    color:      C.accent,
+    fontWeight: '700',
+  },
+
+  /* Scroll */
+  scroll: { flex: 1 },
+  scrollContent: {
+    padding: SPACING.m,
+    gap:     SPACING.xs,
+  },
+  flex: { flex: 1 },
+
+  /* Field */
+  field: {
+    marginBottom: SPACING.m,
+  },
+  fieldLabel: {
+    fontSize:      11,
+    fontWeight:    '600',
+    color:         C.text2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom:  SPACING.s,
+  },
+
+  /* Input */
+  input: {
+    height:          48,
+    backgroundColor: C.surface,
+    borderRadius:    R,
+    paddingHorizontal: SPACING.m,
+    fontSize:        15,
+    fontWeight:      '400',
+    color:           C.text,
+  },
+  inputLarge: {
+    height:    56,
+    fontSize:  17,
+    fontWeight:'500',
+  },
+  textArea: {
+    height:     88,
+    paddingTop: SPACING.m,
+  },
+
+  /* Row of fields */
+  row: {
+    flexDirection: 'row',
+    gap:           SPACING.s,
+  },
+
+  /* Category chips */
+  chips: {
+    gap:         SPACING.s,
+    paddingRight: SPACING.xs,
+  },
+  chip: {
+    height:          36,
+    paddingHorizontal: SPACING.m,
+    borderRadius:    R,
+    backgroundColor: C.surface,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  chipActive: {
+    backgroundColor: C.accent,
+  },
+  chipText: {
+    fontSize:   13,
+    fontWeight: '500',
+    color:      C.text2,
+  },
+  chipTextActive: {
+    color:      C.bg,
+    fontWeight: '700',
+  },
+
+  /* Barcode row */
+  inputRow: {
+    flexDirection: 'row',
+    gap:           SPACING.s,
+    alignItems:    'center',
+  },
+  barcodeIcon: {
+    width:           48,
+    height:          48,
+    borderRadius:    R,
+    backgroundColor: C.surface,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+
+  /* Save button */
+  saveBtn: {
+    height:          56,
+    backgroundColor: C.accent,
+    borderRadius:    R,
+    alignItems:      'center',
+    justifyContent:  'center',
+    marginTop:       SPACING.m,
+  },
+  saveBtnText: {
+    fontSize:   16,
+    fontWeight: '700',
+    color:      C.bg,
   },
 });

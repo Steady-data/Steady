@@ -7,11 +7,11 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   SafeAreaView,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { useTranslation } from '../utils/i18n';
+import { C, R, SPACING } from '../utils/theme';
 
 const VALID_USERNAME = 'Steady';
 const VALID_PASSWORD = '1234';
@@ -19,9 +19,9 @@ const VALID_PASSWORD = '1234';
 export default function LoginScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error,    setError]    = useState('');
   const { login } = useApp();
-  const { t } = useTranslation();
+  const { t }     = useTranslation();
 
   const handleLogin = () => {
     if (username === VALID_USERNAME && password === VALID_PASSWORD) {
@@ -33,137 +33,165 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={s.safe}>
       <KeyboardAvoidingView
-        style={styles.container}
+        style={s.kav}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.inner}>
-          <View style={styles.header}>
-            <Text style={styles.logo}>●</Text>
-            <Text style={styles.title}>{t('appTitle')}</Text>
-            <Text style={styles.subtitle}>{t('appSubtitle')}</Text>
+        <View style={s.inner}>
+
+          {/* Brand */}
+          <View style={s.brand}>
+            <View style={s.logoMark}>
+              <View style={s.logoDot} />
+            </View>
+            <Text style={s.title}>{t('appTitle')}</Text>
+            <Text style={s.subtitle}>{t('appSubtitle')}</Text>
           </View>
 
-          <View style={styles.form}>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder={t('username')}
-                placeholderTextColor="#8E8E93"
-                value={username}
-                onChangeText={(v) => { setUsername(v); setError(''); }}
-                autoCapitalize="none"
-                autoCorrect={false}
-                textContentType="username"
-                autoComplete="username"
-                returnKeyType="next"
-              />
-            </View>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder={t('password')}
-                placeholderTextColor="#8E8E93"
-                value={password}
-                onChangeText={(v) => { setPassword(v); setError(''); }}
-                secureTextEntry
-                textContentType="password"
-                autoComplete="current-password"
-                returnKeyType="done"
-                onSubmitEditing={handleLogin}
-              />
-            </View>
+          {/* Form */}
+          <View style={s.form}>
+            <TextInput
+              style={s.input}
+              placeholder={t('username')}
+              placeholderTextColor={C.text2}
+              value={username}
+              onChangeText={v => { setUsername(v); setError(''); }}
+              autoCapitalize="none"
+              autoCorrect={false}
+              textContentType="username"
+              autoComplete="username"
+              returnKeyType="next"
+              selectionColor={C.accent}
+            />
+            <TextInput
+              style={s.input}
+              placeholder={t('password')}
+              placeholderTextColor={C.text2}
+              value={password}
+              onChangeText={v => { setPassword(v); setError(''); }}
+              secureTextEntry
+              textContentType="password"
+              autoComplete="current-password"
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
+              selectionColor={C.accent}
+            />
 
-            {!!error && <Text style={styles.errorText}>{error}</Text>}
+            {!!error && <Text style={s.error}>{error}</Text>}
 
             <TouchableOpacity
-              style={[styles.loginButton, (!username || !password) && styles.loginButtonDisabled]}
+              style={[s.btn, (!username || !password) && s.btnDim]}
               onPress={handleLogin}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
-              <Text style={styles.loginButtonText}>{t('login')}</Text>
+              <Text style={s.btnText}>{t('login')}</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Footer */}
+          <Text style={s.footer}>
+            Steady · Restaurant Intelligence
+          </Text>
+
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: C.bg,
   },
-  container: {
+  kav: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   inner: {
     flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 32,
+    justifyContent:  'center',
+    paddingHorizontal: SPACING.xl,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 56,
+
+  /* Brand block */
+  brand: {
+    alignItems:   'center',
+    marginBottom: SPACING.xxl,
   },
-  logo: {
-    fontSize: 40,
-    color: '#000000',
-    marginBottom: 16,
+  logoMark: {
+    width:           48,
+    height:          48,
+    borderRadius:    R,
+    backgroundColor: C.accent,
+    alignItems:      'center',
+    justifyContent:  'center',
+    marginBottom:    SPACING.l,
+  },
+  logoDot: {
+    width:           16,
+    height:          16,
+    borderRadius:    R,
+    backgroundColor: C.bg,
   },
   title: {
-    fontSize: 48,
-    fontWeight: '700',
-    color: '#000000',
+    fontSize:      48,
+    fontWeight:    '700',
+    color:         C.text,
     letterSpacing: -1.5,
+    marginBottom:  SPACING.s,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#8E8E93',
-    marginTop: 8,
-    textAlign: 'center',
-    letterSpacing: 0.2,
+    fontSize:   15,
+    fontWeight: '400',
+    color:      C.text2,
+    textAlign:  'center',
   },
+
+  /* Form block */
   form: {
-    gap: 12,
-  },
-  inputWrapper: {
-    borderRadius: 14,
-    overflow: 'hidden',
+    gap: SPACING.s,
   },
   input: {
-    height: 54,
-    backgroundColor: '#F2F2F7',
-    borderRadius: 14,
-    paddingHorizontal: 18,
-    fontSize: 17,
-    color: '#000000',
+    height:          56,
+    backgroundColor: C.surface,
+    borderRadius:    R,
+    paddingHorizontal: SPACING.m,
+    fontSize:        16,
+    fontWeight:      '400',
+    color:           C.text,
   },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 14,
+  error: {
+    fontSize:  13,
+    color:     C.error,
     textAlign: 'center',
-    marginTop: -4,
+    marginTop: SPACING.xs,
   },
-  loginButton: {
-    height: 54,
-    backgroundColor: '#000000',
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
+  btn: {
+    height:          56,
+    backgroundColor: C.accent,
+    borderRadius:    R,
+    alignItems:      'center',
+    justifyContent:  'center',
+    marginTop:       SPACING.s,
   },
-  loginButtonDisabled: {
-    backgroundColor: '#3C3C43',
-    opacity: 0.5,
+  btnDim: {
+    opacity: 0.45,
   },
-  loginButtonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '600',
+  btnText: {
+    fontSize:      16,
+    fontWeight:    '700',
+    color:         C.bg,
     letterSpacing: 0.3,
+  },
+
+  /* Footer */
+  footer: {
+    position:  'absolute',
+    bottom:    SPACING.l,
+    alignSelf: 'center',
+    fontSize:  12,
+    color:     C.surface2,
+    fontWeight:'500',
   },
 });

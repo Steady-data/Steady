@@ -12,72 +12,59 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import { useTranslation } from '../utils/i18n';
+import { C, R, SPACING } from '../utils/theme';
 
 const { width: SW, height: SH } = Dimensions.get('window');
-const SCAN_WINDOW_W = SW * 0.78;
-const SCAN_WINDOW_H = 220;
+const WIN_W = Math.round(SW * 0.80);
+const WIN_H = 200;
 
-const MOCK_SCAN_RESULTS = [
-  { item: 'Campari', qty: 4, category: 'Liqueurs', minQty: 3, supplier: 'Premium Spirits Co.' },
-  { item: 'Jameson Whiskey', qty: 2, category: 'Whiskey', minQty: 5, supplier: 'Irish Imports Ltd.' },
-  { item: 'Patrón Silver', qty: 0, category: 'Tequila', minQty: 2, supplier: 'Mexican Spirits' },
-  { item: 'Grey Goose Vodka', qty: 6, category: 'Vodka', minQty: 4, supplier: 'Premium Spirits Co.' },
-  { item: "Hendrick's Gin", qty: 1, category: 'Gin', minQty: 3, supplier: 'Premium Spirits Co.' },
-  { item: 'Bacardi Rum', qty: 3, category: 'Rum', minQty: 3, supplier: 'Caribbean Imports' },
-  { item: 'Sea Salt', qty: 3, category: 'Dry Goods', minQty: 5, supplier: 'Food Supplies Co.' },
-  { item: 'Black Pepper', qty: 0, category: 'Dry Goods', minQty: 2, supplier: 'Food Supplies Co.' },
-  { item: 'Olive Oil', qty: 1, category: 'Dry Goods', minQty: 2, supplier: 'Food Supplies Co.' },
+const MOCK_ITEMS = [
+  { item: 'Campari',          qty: 4, category: 'Liqueurs', minQty: 3,  supplier: 'Premium Spirits Co.' },
+  { item: 'Jameson Whiskey',  qty: 2, category: 'Whiskey',  minQty: 5,  supplier: 'Irish Imports Ltd.'  },
+  { item: 'Patrón Silver',    qty: 0, category: 'Tequila',  minQty: 2,  supplier: 'Mexican Spirits'      },
+  { item: 'Grey Goose Vodka', qty: 6, category: 'Vodka',    minQty: 4,  supplier: 'Premium Spirits Co.' },
+  { item: "Hendrick's Gin",   qty: 1, category: 'Gin',      minQty: 3,  supplier: 'Premium Spirits Co.' },
+  { item: 'Bacardi Rum',      qty: 3, category: 'Rum',      minQty: 3,  supplier: 'Caribbean Imports'   },
+  { item: 'Sea Salt',         qty: 3, category: 'Dry Goods',minQty: 5,  supplier: 'Food Supplies Co.'   },
+  { item: 'Black Pepper',     qty: 0, category: 'Dry Goods',minQty: 2,  supplier: 'Food Supplies Co.'   },
+  { item: 'Olive Oil',        qty: 1, category: 'Dry Goods',minQty: 2,  supplier: 'Food Supplies Co.'   },
 ];
 
 export default function ScannerScreen() {
   const [cameraActive, setCameraActive] = useState(false);
-  const [scanning, setScanning] = useState(false);
+  const [scanning,     setScanning]     = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   const { addScannedItems } = useApp();
   const { t } = useTranslation();
 
-  const scanLineAnim = useRef(new Animated.Value(0)).current;
-  const scanLoopRef = useRef(null);
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const lineAnim    = useRef(new Animated.Value(0)).current;
+  const loopRef     = useRef(null);
+  const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (scanning) {
-      scanLoopRef.current = Animated.loop(
+      // Fade-in label
+      Animated.timing(opacityAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      // Sweep line loop
+      loopRef.current = Animated.loop(
         Animated.sequence([
-          Animated.timing(scanLineAnim, {
-            toValue: 1,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(scanLineAnim, {
-            toValue: 0,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
+          Animated.timing(lineAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
+          Animated.timing(lineAnim, { toValue: 0, duration: 1000, useNativeDriver: true }),
         ])
       );
-      scanLoopRef.current.start();
-
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.04, duration: 600, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-        ])
-      ).start();
+      loopRef.current.start();
     } else {
-      if (scanLoopRef.current) scanLoopRef.current.stop();
-      scanLineAnim.setValue(0);
-      pulseAnim.setValue(1);
+      loopRef.current?.stop();
+      lineAnim.setValue(0);
+      Animated.timing(opacityAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
     }
-    return () => {
-      if (scanLoopRef.current) scanLoopRef.current.stop();
-    };
+    return () => loopRef.current?.stop();
   }, [scanning]);
 
-  const handleActivateCamera = async () => {
+  const handleActivate = async () => {
     if (!permission?.granted) {
-      const result = await requestPermission();
-      if (!result.granted) {
+      const res = await requestPermission();
+      if (!res.granted) {
         Alert.alert(t('cameraPermissionTitle'), t('permissionDenied'));
         return;
       }
@@ -85,16 +72,13 @@ export default function ScannerScreen() {
     setCameraActive(true);
   };
 
-  const handleScanShelf = () => {
+  const handleScan = () => {
     if (scanning) return;
     setScanning(true);
     setTimeout(() => {
       setScanning(false);
-      addScannedItems(MOCK_SCAN_RESULTS);
-      Alert.alert(
-        t('scanComplete'),
-        `${MOCK_SCAN_RESULTS.length} ${t('itemsDetected')}`
-      );
+      addScannedItems(MOCK_ITEMS);
+      Alert.alert(t('scanComplete'), `${MOCK_ITEMS.length} ${t('itemsDetected')}`);
     }, 3000);
   };
 
@@ -103,267 +87,250 @@ export default function ScannerScreen() {
     setCameraActive(false);
   };
 
-  const scanLineTranslateY = scanLineAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, SCAN_WINDOW_H - 3],
+  const lineY = lineAnim.interpolate({
+    inputRange:  [0, 1],
+    outputRange: [0, WIN_H - 2],
   });
 
+  /* ── ACTIVE CAMERA ── */
   if (cameraActive) {
     return (
-      <View style={styles.cameraContainer}>
+      <View style={s.cameraRoot}>
         <CameraView style={StyleSheet.absoluteFill} facing="back" />
 
-        {/* Dark overlay with scan window cutout */}
-        <View style={styles.overlay} pointerEvents="none">
-          <View style={styles.overlayTop} />
-          <View style={styles.overlayMiddleRow}>
-            <View style={styles.overlaySide} />
-            <Animated.View style={[styles.scanWindow, { transform: [{ scale: pulseAnim }] }]}>
+        {/* Dark vignette overlay with scan-window cutout */}
+        <View style={s.overlay} pointerEvents="none">
+          <View style={s.ovTop} />
+          <View style={s.ovRow}>
+            <View style={s.ovSide} />
+            <View style={{ width: WIN_W, height: WIN_H }}>
               {/* Corner brackets */}
-              <View style={[styles.corner, styles.cornerTL]} />
-              <View style={[styles.corner, styles.cornerTR]} />
-              <View style={[styles.corner, styles.cornerBL]} />
-              <View style={[styles.corner, styles.cornerBR]} />
-
-              {/* Scan line */}
+              <View style={[s.corner, s.cTL]} />
+              <View style={[s.corner, s.cTR]} />
+              <View style={[s.corner, s.cBL]} />
+              <View style={[s.corner, s.cBR]} />
+              {/* Sweep line */}
               {scanning && (
                 <Animated.View
-                  style={[
-                    styles.scanLine,
-                    { transform: [{ translateY: scanLineTranslateY }] },
-                  ]}
+                  style={[s.sweepLine, { transform: [{ translateY: lineY }] }]}
                 />
               )}
-            </Animated.View>
-            <View style={styles.overlaySide} />
+            </View>
+            <View style={s.ovSide} />
           </View>
-          <View style={styles.overlayBottom} />
+          <View style={s.ovBottom}>
+            {/* Inline scanning label — lives inside the bottom overlay band */}
+            <Animated.View style={[s.scanLabel, { opacity: opacityAnim }]}>
+              <View style={s.scanLabelDot} />
+              <Text style={s.scanLabelText}>{t('scanning')}</Text>
+            </Animated.View>
+          </View>
         </View>
 
-        {/* Scanning label */}
-        {scanning && (
-          <View style={styles.scanningLabel}>
-            <Text style={styles.scanningText}>{t('scanning')}</Text>
-          </View>
-        )}
-
-        {/* Controls */}
-        <View style={styles.cameraControls}>
+        {/* Action buttons */}
+        <View style={s.ctrlRow}>
           {!scanning && (
-            <TouchableOpacity style={styles.scanBtn} onPress={handleScanShelf} activeOpacity={0.85}>
-              <Ionicons name="scan" size={20} color="#000000" />
-              <Text style={styles.scanBtnText}>{t('scanShelf')}</Text>
+            <TouchableOpacity style={s.primaryBtn} onPress={handleScan} activeOpacity={0.85}>
+              <Ionicons name="scan" size={18} color={C.bg} />
+              <Text style={s.primaryBtnText}>{t('scanShelf')}</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.stopBtn} onPress={handleStop} activeOpacity={0.85}>
-            <Text style={styles.stopBtnText}>{t('stop')}</Text>
+          <TouchableOpacity style={s.ghostBtn} onPress={handleStop} activeOpacity={0.8}>
+            <Text style={s.ghostBtnText}>{t('stop')}</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   }
 
+  /* ── INACTIVE STATE ── */
   return (
-    <View style={styles.inactiveContainer}>
-      <View style={styles.cameraPlaceholder}>
-        <Ionicons name="camera" size={64} color="#C6C6C8" />
+    <View style={s.idleRoot}>
+
+      {/* Viewport mockup */}
+      <View style={s.viewportFrame}>
+        <View style={[s.corner, s.cTL]} />
+        <View style={[s.corner, s.cTR]} />
+        <View style={[s.corner, s.cBL]} />
+        <View style={[s.corner, s.cBR]} />
+        <Ionicons name="camera-outline" size={40} color={C.text2} />
       </View>
-      <Text style={styles.inactiveTitle}>Scanner</Text>
-      <Text style={styles.inactiveSubtitle}>
-        Point your camera at a shelf to{'\n'}automatically detect stock levels.
+
+      <Text style={s.idleTitle}>Shelf Scanner</Text>
+      <Text style={s.idleBody}>
+        Point at a shelf to automatically{'\n'}detect and log stock levels.
       </Text>
-      <TouchableOpacity
-        style={styles.activateBtn}
-        onPress={handleActivateCamera}
-        activeOpacity={0.85}
-      >
-        <Ionicons name="camera" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-        <Text style={styles.activateBtnText}>{t('activateCamera')}</Text>
+
+      <TouchableOpacity style={s.activateBtn} onPress={handleActivate} activeOpacity={0.85}>
+        <Ionicons name="camera" size={18} color={C.bg} style={{ marginRight: SPACING.s }} />
+        <Text style={s.activateBtnText}>{t('activateCamera')}</Text>
       </TouchableOpacity>
+
     </View>
   );
 }
 
-const CORNER_SIZE = 22;
-const CORNER_THICKNESS = 3;
-const BORDER_RADIUS = 4;
+const CORNER = 20;
+const THICK  = 2;
 
-const styles = StyleSheet.create({
-  cameraContainer: {
+const s = StyleSheet.create({
+  /* Camera active */
+  cameraRoot: {
     flex: 1,
     backgroundColor: '#000',
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    flexDirection: 'column',
   },
-  overlayTop: {
+  ovTop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(18,18,18,0.68)',
   },
-  overlayMiddleRow: {
+  ovRow: {
     flexDirection: 'row',
-    height: SCAN_WINDOW_H,
+    height: WIN_H,
   },
-  overlaySide: {
+  ovSide: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(18,18,18,0.68)',
   },
-  scanWindow: {
-    width: SCAN_WINDOW_W,
-    height: SCAN_WINDOW_H,
-    overflow: 'hidden',
-    backgroundColor: 'transparent',
-  },
-  overlayBottom: {
+  ovBottom: {
     flex: 2,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(18,18,18,0.68)',
+    alignItems: 'center',
+    paddingTop: SPACING.m,
   },
+
+  /* Corner brackets (shared idle + active) */
   corner: {
     position: 'absolute',
-    width: CORNER_SIZE,
-    height: CORNER_SIZE,
+    width:  CORNER,
+    height: CORNER,
   },
-  cornerTL: {
-    top: 0,
-    left: 0,
-    borderTopWidth: CORNER_THICKNESS,
-    borderLeftWidth: CORNER_THICKNESS,
-    borderColor: '#FFFFFF',
-    borderTopLeftRadius: BORDER_RADIUS,
+  cTL: { top: 0, left: 0,
+    borderTopWidth: THICK, borderLeftWidth: THICK,
+    borderColor: C.accent, borderTopLeftRadius: R },
+  cTR: { top: 0, right: 0,
+    borderTopWidth: THICK, borderRightWidth: THICK,
+    borderColor: C.accent, borderTopRightRadius: R },
+  cBL: { bottom: 0, left: 0,
+    borderBottomWidth: THICK, borderLeftWidth: THICK,
+    borderColor: C.accent, borderBottomLeftRadius: R },
+  cBR: { bottom: 0, right: 0,
+    borderBottomWidth: THICK, borderRightWidth: THICK,
+    borderColor: C.accent, borderBottomRightRadius: R },
+
+  /* Sweep line */
+  sweepLine: {
+    position:        'absolute',
+    left:            0,
+    right:           0,
+    height:          2,
+    backgroundColor: C.accent,
   },
-  cornerTR: {
-    top: 0,
-    right: 0,
-    borderTopWidth: CORNER_THICKNESS,
-    borderRightWidth: CORNER_THICKNESS,
-    borderColor: '#FFFFFF',
-    borderTopRightRadius: BORDER_RADIUS,
+
+  /* Scanning label */
+  scanLabel: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    gap:             SPACING.s,
+    backgroundColor: C.surface,
+    paddingHorizontal: SPACING.m,
+    paddingVertical: SPACING.s,
+    borderRadius:    R,
   },
-  cornerBL: {
-    bottom: 0,
-    left: 0,
-    borderBottomWidth: CORNER_THICKNESS,
-    borderLeftWidth: CORNER_THICKNESS,
-    borderColor: '#FFFFFF',
-    borderBottomLeftRadius: BORDER_RADIUS,
+  scanLabelDot: {
+    width:           8,
+    height:          8,
+    borderRadius:    R,
+    backgroundColor: C.accent,
   },
-  cornerBR: {
-    bottom: 0,
-    right: 0,
-    borderBottomWidth: CORNER_THICKNESS,
-    borderRightWidth: CORNER_THICKNESS,
-    borderColor: '#FFFFFF',
-    borderBottomRightRadius: BORDER_RADIUS,
-  },
-  scanLine: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: '#34C759',
-    shadowColor: '#34C759',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  scanningLabel: {
-    position: 'absolute',
-    top: SH * 0.5 + SCAN_WINDOW_H / 2 + 16,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  scanningText: {
-    color: '#34C759',
-    fontSize: 15,
+  scanLabelText: {
+    color:      C.accent,
+    fontSize:   14,
     fontWeight: '600',
-    letterSpacing: 0.3,
   },
-  cameraControls: {
+
+  /* Control row */
+  ctrlRow: {
     position: 'absolute',
-    bottom: 50,
-    left: 0,
-    right: 0,
+    bottom:   48,
+    left:     SPACING.m,
+    right:    SPACING.m,
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
-    paddingHorizontal: 32,
+    gap: SPACING.s,
   },
-  scanBtn: {
-    flex: 1,
-    height: 54,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+  primaryBtn: {
+    flex:            1,
+    height:          56,
+    backgroundColor: C.accent,
+    borderRadius:    R,
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'center',
+    gap:             SPACING.s,
   },
-  scanBtnText: {
-    color: '#000000',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  stopBtn: {
-    height: 54,
-    paddingHorizontal: 24,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stopBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  inactiveContainer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-  },
-  cameraPlaceholder: {
-    width: 120,
-    height: 120,
-    borderRadius: 30,
-    backgroundColor: '#F2F2F7',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 32,
-  },
-  inactiveTitle: {
-    fontSize: 28,
+  primaryBtnText: {
+    color:      C.bg,
+    fontSize:   16,
     fontWeight: '700',
-    color: '#000000',
-    marginBottom: 12,
+  },
+  ghostBtn: {
+    height:          56,
+    paddingHorizontal: SPACING.m,
+    backgroundColor: C.surface,
+    borderRadius:    R,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  ghostBtnText: {
+    color:      C.text2,
+    fontSize:   15,
+    fontWeight: '600',
+  },
+
+  /* Idle state */
+  idleRoot: {
+    flex:             1,
+    backgroundColor:  C.bg,
+    alignItems:       'center',
+    justifyContent:   'center',
+    paddingHorizontal: SPACING.xl,
+  },
+  viewportFrame: {
+    width:           WIN_W * 0.7,
+    height:          WIN_H * 0.75,
+    backgroundColor: C.surface,
+    borderRadius:    R,
+    alignItems:      'center',
+    justifyContent:  'center',
+    marginBottom:    SPACING.xl,
+  },
+  idleTitle: {
+    fontSize:      24,
+    fontWeight:    '700',
+    color:         C.text,
+    marginBottom:  SPACING.s,
     letterSpacing: -0.5,
   },
-  inactiveSubtitle: {
-    fontSize: 16,
-    color: '#8E8E93',
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 40,
+  idleBody: {
+    fontSize:     15,
+    color:        C.text2,
+    textAlign:    'center',
+    lineHeight:   22,
+    marginBottom: SPACING.xl,
   },
   activateBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 54,
-    paddingHorizontal: 28,
-    backgroundColor: '#000000',
-    borderRadius: 14,
+    flexDirection:   'row',
+    alignItems:      'center',
+    height:          56,
+    paddingHorizontal: SPACING.l,
+    backgroundColor: C.accent,
+    borderRadius:    R,
   },
   activateBtnText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '600',
+    color:      C.bg,
+    fontSize:   16,
+    fontWeight: '700',
   },
 });
