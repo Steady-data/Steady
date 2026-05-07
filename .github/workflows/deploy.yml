@@ -1,0 +1,72 @@
+name: Build and Deploy to gh-pages
+
+on:
+  push:
+    branches: ["claude/steady-inventory-app-FEc00"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/steady-inventory-app-FEc00
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci --legacy-peer-deps
+
+      - name: Patch expo-font web shim
+        run: |
+          FONT_WEB="node_modules/expo-font/build/ExpoFontLoader.web.js"
+          [ -f "$FONT_WEB" ] || { echo "Not found: $FONT_WEB"; find node_modules/expo-font -name "*.js" | head -10; exit 0; }
+          cat > "$FONT_WEB" <<'EOF'
+// Patched web shim - adds missing isLoaded()
+const _loaded = {};
+export default {
+  loadAsync(name, resource) {
+    return new Promise((resolve) => {
+      const url = typeof resource === 'string' ? resource : resource?.uri;
+      if (!url) { _loaded[name] = true; return resolve(); }
+      const style = document.createElement('style');
+      style.textContent = "@font-face{font-family:'" + name + "';src:url('" + url + "')}";
+      document.head.appendChild(style);
+      document.fonts.load('1em ' + name).then(() => { _loaded[name] = true; resolve(); }).catch(() => { _loaded[name] = true; resolve(); });
+    });
+  },
+  isLoaded(name) { return !!_loaded[name]; },
+  unloadAllAsync() { return Promise.resolve(); },
+  getLoadedFonts() { return Object.keys(_loaded); },
+};
+EOF
+          echo "Patched $FONT_WEB"
+
+      - name: Build Expo web
+        run: npx expo export -p web --output-dir /tmp/web-build --clear
+        env:
+          CI: "false"
+
+      - name: Patch asset paths
+        run: |
+          cd /tmp/web-build
+          JS=$(find _expo/static/js/web -name "AppEntry-*.js" | head -1)
+          [ -n "$JS" ] && sed -i 's|"/assets/|"/Steady/assets/|g; s|"/_expo/|"/Steady/_expo/|g' "$JS"
+          sed -i 's|src="/_expo/|src="_expo/|g; s|href="/_expo/|href="_expo/|g; s|href="/assets/|href="assets/|g' index.html
+
+      - name: Deploy to gh-pages
+        run: |
+          cd /tmp/web-build
+          touch .nojekyll
+          git init -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: ExpoFontLoader.isLoaded crash on web"
+          git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages:gh-pages
