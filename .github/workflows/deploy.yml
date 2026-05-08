@@ -23,30 +23,16 @@ jobs:
 
       - run: npm ci --legacy-peer-deps
 
-      - name: Patch expo-font web shim
+      - name: Patch expo-font ExpoFontLoader.web.js
         run: |
-          FONT_WEB="node_modules/expo-font/build/ExpoFontLoader.web.js"
-          [ -f "$FONT_WEB" ] || { echo "Not found: $FONT_WEB"; find node_modules/expo-font -name "*.js" | head -10; exit 0; }
-          cat > "$FONT_WEB" <<'EOF'
-// Patched web shim - adds missing isLoaded()
-const _loaded = {};
-export default {
-  loadAsync(name, resource) {
-    return new Promise((resolve) => {
-      const url = typeof resource === 'string' ? resource : resource?.uri;
-      if (!url) { _loaded[name] = true; return resolve(); }
-      const style = document.createElement('style');
-      style.textContent = "@font-face{font-family:'" + name + "';src:url('" + url + "')}";
-      document.head.appendChild(style);
-      document.fonts.load('1em ' + name).then(() => { _loaded[name] = true; resolve(); }).catch(() => { _loaded[name] = true; resolve(); });
-    });
-  },
-  isLoaded(name) { return !!_loaded[name]; },
-  unloadAllAsync() { return Promise.resolve(); },
-  getLoadedFonts() { return Object.keys(_loaded); },
-};
-EOF
-          echo "Patched $FONT_WEB"
+          TARGET=node_modules/expo-font/build/ExpoFontLoader.web.js
+          if [ ! -f "$TARGET" ]; then echo "NOT FOUND: $TARGET"; find node_modules/expo-font/build -name "*.js" | head -10; exit 0; fi
+          node -e "
+          var fs=require('fs');
+          var code='const _loaded={};\nexport default {\n  loadAsync(name,resource){\n    return new Promise((resolve)=>{\n      var url=typeof resource==="string"?resource:(resource&&resource.uri?resource.uri:null);\n      if(!url){_loaded[name]=true;return resolve();}\n      var style=document.createElement("style");\n      style.textContent="@font-face{font-family:\'"+ name +"\';src:url(\'"+ url +"\')}";\n      document.head.appendChild(style);\n      document.fonts.load("1em "+name).then(()=>{_loaded[name]=true;resolve();}).catch(()=>{_loaded[name]=true;resolve();});\n    });\n  },\n  isLoaded(name){return !!_loaded[name];},\n  unloadAllAsync(){return Promise.resolve();},\n  getLoadedFonts(){return Object.keys(_loaded);},\n};\n';
+          fs.writeFileSync('node_modules/expo-font/build/ExpoFontLoader.web.js',code);
+          console.log('Patched ExpoFontLoader.web.js');
+          "
 
       - name: Build Expo web
         run: npx expo export -p web --output-dir /tmp/web-build --clear
@@ -56,9 +42,14 @@ EOF
       - name: Patch asset paths
         run: |
           cd /tmp/web-build
-          JS=$(find _expo/static/js/web -name "AppEntry-*.js" | head -1)
-          [ -n "$JS" ] && sed -i 's|"/assets/|"/Steady/assets/|g; s|"/_expo/|"/Steady/_expo/|g' "$JS"
-          sed -i 's|src="/_expo/|src="_expo/|g; s|href="/_expo/|href="_expo/|g; s|href="/assets/|href="assets/|g' index.html
+          JS=$(find _expo/static/js/web -name "AppEntry-*.js" 2>/dev/null | head -1)
+          if [ -n "$JS" ]; then
+            sed -i 's|"/assets/|"/Steady/assets/|g' "$JS"
+            sed -i 's|"/_expo/|"/Steady/_expo/|g' "$JS"
+          fi
+          sed -i 's|src="/_expo/|src="_expo/|g' index.html
+          sed -i 's|href="/_expo/|href="_expo/|g' index.html
+          sed -i 's|href="/assets/|href="assets/|g' index.html
 
       - name: Deploy to gh-pages
         run: |
