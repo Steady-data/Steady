@@ -22,7 +22,7 @@
     },
     "web": {
       "bundler": "metro",
-      "baseUrl": "/steady"
+      "baseUrl": "/Steady"
     },
     "plugins": [
       [
