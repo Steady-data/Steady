@@ -1,19 +1,20 @@
-// Web shim for expo-font ExpoFontLoader - adds missing isLoaded() for Expo SDK 51 web
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
 const _loaded = {};
-export default {
-  loadAsync(name, resource) {
-    return new Promise((resolve) => {
-      const url = typeof resource === 'string' ? resource : (resource && resource.uri ? resource.uri : null);
+const ExpoFontLoader = {
+  loadAsync: function(name, resource) {
+    return new Promise(function(resolve) {
+      var url = typeof resource === "string" ? resource : (resource && resource.uri ? resource.uri : null);
       if (!url) { _loaded[name] = true; return resolve(); }
-      const style = document.createElement('style');
-      style.textContent = "@font-face{font-family:'" + name + "';src:url('" + url + "')}";
+      var style = document.createElement("style");
+      style.textContent = "@font-face{font-family:" + name + ";src:url(" + url + ")}";
       document.head.appendChild(style);
-      document.fonts.load('1em ' + name)
-        .then(() => { _loaded[name] = true; resolve(); })
-        .catch(() => { _loaded[name] = true; resolve(); });
+      document.fonts.load("1em " + name).then(function() { _loaded[name] = true; resolve(); }).catch(function() { _loaded[name] = true; resolve(); });
     });
   },
-  isLoaded(name) { return !!_loaded[name]; },
-  unloadAllAsync() { return Promise.resolve(); },
-  getLoadedFonts() { return Object.keys(_loaded); },
+  isLoaded: function(name) { return !!_loaded[name]; },
+  unloadAllAsync: function() { return Promise.resolve(); },
+  getLoadedFonts: function() { return Object.keys(_loaded); }
 };
+exports.default = ExpoFontLoader;
