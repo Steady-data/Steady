@@ -28,7 +28,7 @@ jobs:
           FONTLOADER=node_modules/expo-font/build/FontLoader.js
           if [ -f "$FONTLOADER" ]; then
             sed -i 's/if (typeof ExpoFontLoader.isLoaded !== .function.)/if (typeof ExpoFontLoader?.isLoaded !== "function")/g' "$FONTLOADER"
-            node -e "var fs=require('fs'); var c=fs.readFileSync('$FONTLOADER','utf8'); c=c.replace(/new Error[(][^)]*[)]/g,'null'); fs.writeFileSync('$FONTLOADER',c); console.log('patched');"
+            node -e "var fs=require('fs'); var c=fs.readFileSync('$FONTLOADER','utf8'); c=c.replace(/new Error[(][^)]*[)]/g,'null'); fs.writeFileSync('$FONTLOADER',c); console.log('patched FontLoader.js');"
           else
             echo "FontLoader.js not found"
           fi
@@ -57,7 +57,7 @@ jobs:
             if [ -f "$F" ] && ! grep -q "registerWebModule" "$F"; then
               echo "" >> "$F"
               echo "$SHIM" >> "$F"
-              echo "shimmed main $F"
+              echo "shimmed $F"
             fi
           done
 
@@ -70,14 +70,11 @@ jobs:
         run: |
           JS=$(find /tmp/web-build/_expo/static/js/web -name "AppEntry-*.js" 2>/dev/null | head -1)
           if [ -n "$JS" ] && grep -q "registerWebModule" "$JS"; then
-            cat > /tmp/polyfill.js << 'ENDOFPOLYFILL'
-(function(){var d=globalThis.__d;if(d&&!globalThis.__rwm){globalThis.__rwm=1;globalThis.__d=function(f,id,deps){d(function(g,r,i,a,m,e,t){f(g,r,i,a,m,e,t);if(e&&!e.registerWebModule)e.registerWebModule=function(c){return c;};},id,deps);};}})();
-ENDOFPOLYFILL
-            cat /tmp/polyfill.js "$JS" > /tmp/patched.js
+            cat scripts/registerWebModule.polyfill.js "$JS" > /tmp/patched.js
             mv /tmp/patched.js "$JS"
             echo "polyfill injected into $JS"
           else
-            echo "no registerWebModule calls or JS not found"
+            echo "no registerWebModule call found or JS missing"
           fi
 
       - name: Patch asset paths
