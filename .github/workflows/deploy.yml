@@ -23,7 +23,20 @@ jobs:
 
       - run: npm ci --legacy-peer-deps
 
-      - name: Patch expo-font ExpoFontLoader.web.js
+      - name: List expo-font build files
+        run: ls node_modules/expo-font/build/ || echo "expo-font not found"
+
+      - name: Patch expo-font FontLoader.js - guard isLoaded check
+        run: |
+          FONTLOADER=node_modules/expo-font/build/FontLoader.js
+          if [ -f "$FONTLOADER" ]; then
+            sed -i 's/if (typeof ExpoFontLoader\.isLoaded !== .function.)/if (typeof ExpoFontLoader?.isLoaded !== "function")/g' "$FONTLOADER"
+            node -e "var fs=require('fs'); var c=fs.readFileSync('$FONTLOADER','utf8'); c=c.replace(/new Error\(.expected ExpoFontLoader\.isLoaded[^)]*\)/g, 'null'); fs.writeFileSync('$FONTLOADER',c); console.log('patched FontLoader.js');"
+          else
+            echo "FontLoader.js not found"
+          fi
+
+      - name: Patch expo-font ExpoFontLoader.web.js  
         run: |
           TARGET=node_modules/expo-font/build/ExpoFontLoader.web.js
           if [ -f "$TARGET" ]; then
