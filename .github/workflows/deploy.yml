@@ -1,0 +1,64 @@
+name: Build and Deploy to gh-pages
+
+on:
+  push:
+    branches: ["claude/steady-inventory-app-FEc00"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/steady-inventory-app-FEc00
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci --legacy-peer-deps
+
+      - name: Patch expo-font ExpoFontLoader.web.js
+        run: |
+          TARGET=node_modules/expo-font/build/ExpoFontLoader.web.js
+          if [ -f "$TARGET" ]; then
+            cp scripts/ExpoFontLoader.web.patch.js "$TARGET"
+            echo "Patched $TARGET"
+          else
+            echo "NOT FOUND: $TARGET"
+            find node_modules/expo-font/build -name "*.js" | head -10
+          fi
+
+      - name: Build Expo web
+        run: npx expo export -p web --output-dir /tmp/web-build --clear
+        env:
+          CI: "false"
+
+      - name: Patch asset paths
+        run: |
+          cd /tmp/web-build
+          JS=$(find _expo/static/js/web -name "AppEntry-*.js" 2>/dev/null | head -1)
+          if [ -n "$JS" ]; then
+            sed -i 's|"/assets/|"/Steady/assets/|g' "$JS"
+            sed -i 's|"/_expo/|"/Steady/_expo/|g' "$JS"
+            echo "Patched $JS"
+          fi
+          sed -i 's|src="/_expo/|src="_expo/|g' index.html
+          sed -i 's|href="/_expo/|href="_expo/|g' index.html
+          sed -i 's|href="/assets/|href="assets/|g' index.html
+
+      - name: Deploy to gh-pages
+        run: |
+          cd /tmp/web-build
+          touch .nojekyll
+          git init -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: ExpoFontLoader.isLoaded crash on web"
+          git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages:gh-pages
