@@ -27,8 +27,8 @@ jobs:
         run: |
           FONTLOADER=node_modules/expo-font/build/FontLoader.js
           if [ -f "$FONTLOADER" ]; then
-            sed -i 's/if (typeof ExpoFontLoader\.isLoaded !== .function.)/if (typeof ExpoFontLoader?.isLoaded !== "function")/g' "$FONTLOADER"
-            node -e "var fs=require('fs'); var c=fs.readFileSync('$FONTLOADER','utf8'); c=c.replace(/new Error\(.expected ExpoFontLoader\.isLoaded[^)]*\)/g, 'null'); fs.writeFileSync('$FONTLOADER',c); console.log('patched FontLoader.js');"
+            sed -i 's/if (typeof ExpoFontLoader.isLoaded !== .function.)/if (typeof ExpoFontLoader?.isLoaded !== "function")/g' "$FONTLOADER"
+            node -e "var fs=require('fs'); var c=fs.readFileSync('$FONTLOADER','utf8'); c=c.replace(/new Error[(][^)]*[)]/g,'null'); fs.writeFileSync('$FONTLOADER',c); console.log('patched');"
           else
             echo "FontLoader.js not found"
           fi
@@ -41,24 +41,23 @@ jobs:
             echo "Patched $TARGET"
           else
             echo "NOT FOUND: $TARGET"
-            find node_modules/expo-font/build -name "*.js" | head -10
           fi
 
       - name: Shim registerWebModule in expo-modules-core
         run: |
-          SHIM='if(!exports.registerWebModule){exports.registerWebModule=function(cls,name){return cls;}}'
-          find node_modules/expo-modules-core/build -name "*.web.js" | while read f; do
-            if ! grep -q "registerWebModule" "$f"; then
-              echo "" >> "$f"
-              echo "$SHIM" >> "$f"
-              echo "Shimmed: $f"
+          SHIM='if(!exports.registerWebModule){exports.registerWebModule=function(c){return c;}}'
+          for F in $(find node_modules/expo-modules-core/build -name "*.web.js" 2>/dev/null); do
+            if ! grep -q "registerWebModule" "$F"; then
+              echo "" >> "$F"
+              echo "$SHIM" >> "$F"
+              echo "shimmed $F"
             fi
           done
           for F in node_modules/expo-modules-core/build/index.web.js node_modules/expo-modules-core/build/web/index.js; do
             if [ -f "$F" ] && ! grep -q "registerWebModule" "$F"; then
               echo "" >> "$F"
               echo "$SHIM" >> "$F"
-              echo "Shimmed main: $F"
+              echo "shimmed main $F"
             fi
           done
 
@@ -70,13 +69,15 @@ jobs:
       - name: Inject registerWebModule polyfill into bundle
         run: |
           JS=$(find /tmp/web-build/_expo/static/js/web -name "AppEntry-*.js" 2>/dev/null | head -1)
-          if [ -n "$JS" ]; then
-            if grep -q "registerWebModule" "$JS"; then
-              POLYFILL='(function(){if(!globalThis.__rwmOk){globalThis.__rwmOk=true;var _d=globalThis.__d;if(_d){globalThis.__d=function(f,id,deps){_d(function(g,r,i,a,m,e,d){f(g,r,i,a,m,e,d);if(e&&!e.registerWebModule)e.registerWebModule=function(c){return c;};},id,deps);};}})();'
-              printf '%s
-' "$POLYFILL" | cat - "$JS" > /tmp/patched.js && mv /tmp/patched.js "$JS"
-              echo "Injected registerWebModule polyfill"
-            fi
+          if [ -n "$JS" ] && grep -q "registerWebModule" "$JS"; then
+            cat > /tmp/polyfill.js << 'ENDOFPOLYFILL'
+(function(){var d=globalThis.__d;if(d&&!globalThis.__rwm){globalThis.__rwm=1;globalThis.__d=function(f,id,deps){d(function(g,r,i,a,m,e,t){f(g,r,i,a,m,e,t);if(e&&!e.registerWebModule)e.registerWebModule=function(c){return c;};},id,deps);};}})();
+ENDOFPOLYFILL
+            cat /tmp/polyfill.js "$JS" > /tmp/patched.js
+            mv /tmp/patched.js "$JS"
+            echo "polyfill injected into $JS"
+          else
+            echo "no registerWebModule calls or JS not found"
           fi
 
       - name: Patch asset paths
@@ -86,7 +87,7 @@ jobs:
           if [ -n "$JS" ]; then
             sed -i 's|"/assets/|"/Steady/assets/|g' "$JS"
             sed -i 's|"/_expo/|"/Steady/_expo/|g' "$JS"
-            echo "Patched asset paths in $JS"
+            echo "patched $JS"
           fi
           sed -i 's|src="/_expo/|src="_expo/|g' index.html
           sed -i 's|href="/_expo/|href="_expo/|g' index.html
