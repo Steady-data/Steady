@@ -1,5 +1,19 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+
+class ErrorBoundary extends React.Component {
+  state = { error: null };
+  static getDerivedStateFromError(e) { return { error: e }; }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <ScrollView style={{ flex: 1, backgroundColor: '#121212', padding: 24 }} contentContainerStyle={{ paddingTop: 60 }}>
+        <Text style={{ color: '#EF4444', fontSize: 16, fontWeight: '700', marginBottom: 12 }}>CRASH — copy this and send to developer:</Text>
+        <Text style={{ color: '#F9FAFB', fontSize: 12, fontFamily: 'monospace' }}>{String(this.state.error)}{'\n\n'}{this.state.error?.stack}</Text>
+      </ScrollView>
+    );
+  }
+}
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -106,17 +120,19 @@ function AppNavigator() {
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <AppProvider>
-        <View style={styles.root}>
-          <NavigationContainer theme={NavTheme}>
-            <StatusBar style="light" />
-            <AppNavigator />
-          </NavigationContainer>
-          <GlobalFABs />
-        </View>
-      </AppProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <AppProvider>
+          <View style={styles.root}>
+            <NavigationContainer theme={NavTheme}>
+              <StatusBar style="light" />
+              <AppNavigator />
+            </NavigationContainer>
+            <GlobalFABs />
+          </View>
+        </AppProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 
