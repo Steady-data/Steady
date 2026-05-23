@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#090807">
+  <title>Nof Shelly | Private Chef</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:            #090807;
+      --card:          #141009;
+      --amber:         #c98a3c;
+      --amber-lt:      #e8a94e;
+      --amber-dk:      #8b5e2a;
+      --amber-glow:    rgba(201,138,60,0.18);
+      --txt:           #f0ebe0;
+      --txt-sub:       #9a907e;
+      --txt-muted:     #52493e;
+      --border:        rgba(201,138,60,0.18);
+      --border-hov:    rgba(201,138,60,0.48);
+    }
+
+    html, body {
+      height: 100%;
+      background: #090807;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      padding: 24px 16px;
+    }
+
+    /* ── Background ── */
+    .scene {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 70% 45% at 50% 105%, rgba(160,70,15,0.28) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 25% 95%,  rgba(200,100,20,0.10) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 30% at 75% 98%,  rgba(190,80,10,0.10)  0%, transparent 60%),
+        linear-gradient(180deg, #090807 0%, #0d0a06 100%);
+    }
+
+    /* ── Ember particles ── */
+    #embers {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .ember {
+      position: absolute;
+      bottom: -8px;
+      border-radius: 50%;
+      opacity: 0;
+      animation: ascend linear infinite;
+    }
+
+    @keyframes ascend {
+      0%   { opacity: 0;    transform: translateY(0)     scale(1);   }
+      8%   { opacity: 0.75; }
+      75%  { opacity: 0.12; }
+      100% { opacity: 0;    transform: translateY(-100vh) scale(0.2) translateX(var(--d)); }
+    }
+
+    /* ── Card ── */
+    .card {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 400px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 52px 36px 44px;
+      text-align: center;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.025),
+        0 48px 96px rgba(0,0,0,0.65),
+        0 0 80px rgba(201,138,60,0.05);
+      opacity: 0;
+      transform: translateY(28px) scale(0.98);
+      animation: reveal 1s cubic-bezier(0.22,1,0.36,1) 0.25s forwards;
+    }
+
+    @keyframes reveal {
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* top accent bar */
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 56px; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--amber), transparent);
+      border-radius: 0 0 3px 3px;
+    }
+
+    /* ── Photo ── */
+    .photo-wrap {
+      position: relative;
+      display: inline-flex;
+      margin-bottom: 30px;
+    }
+
+    /* spinning conic ring */
+    .photo-ring {
+      position: absolute;
+      inset: -5px;
+      border-radius: 50%;
+      background: conic-gradient(
+        var(--amber-lt) 0deg,
+        var(--amber)    90deg,
+        var(--amber-dk) 180deg,
+        var(--amber)    270deg,
+        var(--amber-lt) 360deg
+      );
+      animation: spin 14s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* mask so only a thin ring shows */
+    .photo-ring::after {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border-radius: 50%;
+      background: var(--card);
+    }
+
+    .photo-circle {
+      position: relative;
+      z-index: 2;
+      width: 126px;
+      height: 126px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: linear-gradient(135deg, #1e180f, #2a1e0f);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .photo-circle img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center 15%;
+      display: block;
+    }
+
+    .photo-initial {
+      font-family: 'Playfair Display', serif;
+      font-size: 3rem;
+      color: var(--amber);
+      display: none;
+    }
+
+    .photo-glow {
+      position: absolute;
+      bottom: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90px; height: 18px;
+      background: radial-gradient(ellipse, rgba(201,138,60,0.5) 0%, transparent 70%);
+      filter: blur(8px);
+      z-index: 1;
+    }
+
+    /* ── Typography ── */
+    .name {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.15rem;
+      font-weight: 600;
+      color: var(--txt);
+      letter-spacing: 0.02em;
+      line-height: 1.15;
+      margin-bottom: 7px;
+    }
+
+    .name em {
+      font-style: italic;
+      color: var(--amber-lt);
+    }
+
+    .role {
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--amber);
+      margin-bottom: 24px;
+    }
+
+    /* ── Divider ── */
+    .rule {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 20px;
+    }
+    .rule-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+    }
+    .rule-flame {
+      font-size: 0.7rem;
+      color: var(--amber);
+      opacity: 0.7;
+      animation: flicker 2.8s ease-in-out infinite;
+    }
+    @keyframes flicker {
+      0%,100% { opacity: 0.7; } 45% { opacity: 0.35; } 55% { opacity: 0.6; }
+    }
+
+    .tagline {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: 0.92rem;
+      color: var(--txt-sub);
+      letter-spacing: 0.02em;
+      line-height: 1.7;
+      margin-bottom: 10px;
+    }
+
+    .creds {
+      font-size: 0.63rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--txt-muted);
+      margin-bottom: 26px;
+    }
+
+    /* ── Buttons ── */
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .btn {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 14px 18px;
+      border-radius: 13px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.28s cubic-bezier(0.22,1,0.36,1),
+                  box-shadow 0.28s cubic-bezier(0.22,1,0.36,1),
+                  background 0.28s, border-color 0.28s;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn i { font-size: 0.95rem; flex-shrink: 0; }
+
+    /* shimmer on hover */
+    .btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.07) 50%, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .btn:hover::after { opacity: 1; }
+
+    .btn-wa {
+      background: linear-gradient(135deg, #c98a3c 0%, #a06828 100%);
+      color: #fff;
+      box-shadow: 0 4px 24px rgba(201,138,60,0.28);
+    }
+    .btn-wa:hover  { transform: translateY(-3px); box-shadow: 0 10px 36px rgba(201,138,60,0.42); }
+    .btn-wa:active { transform: translateY(-1px); }
+
+    .btn-ghost {
+      background: rgba(255,255,255,0.035);
+      color: var(--txt);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover  { background: rgba(201,138,60,0.07); border-color: var(--border-hov); transform: translateY(-2px); }
+    .btn-ghost:active { transform: translateY(0); }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* ── Ripple ── */
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.18);
+      transform: scale(0);
+      animation: ripple 0.55s linear;
+      pointer-events: none;
+    }
+    @keyframes ripple { to { transform: scale(5); opacity: 0; } }
+
+    /* ── Footer ── */
+    .foot {
+      margin-top: 32px;
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--txt-muted);
+    }
+
+    /* ── Mobile tweaks ── */
+    @media (max-width: 360px) {
+      .card { padding: 44px 22px 36px; }
+      .name { font-size: 1.85rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="scene"></div>
+<div id="embers"></div>
+
+<div class="card">
+
+  <!-- Profile photo -->
+  <div class="photo-wrap">
+    <div class="photo-ring"></div>
+    <div class="photo-circle" id="photoCircle">
+      <img
+        id="photo"
+        src="nof-shelly.jpg"
+        alt="Nof Shelly"
+        onerror="document.getElementById('photo').style.display='none'; document.getElementById('initial').style.display='block';"
+      >
+      <span class="photo-initial" id="initial">N</span>
+    </div>
+    <div class="photo-glow"></div>
+  </div>
+
+  <!-- Identity -->
+  <h1 class="name">Nof <em>Shelly</em></h1>
+  <p class="role">Private Chef &amp; Culinary Entrepreneur</p>
+
+  <!-- Divider -->
+  <div class="rule">
+    <div class="rule-line"></div>
+    <span class="rule-flame">&#x1F525;</span>
+    <div class="rule-line"></div>
+  </div>
+
+  <!-- Tagline -->
+  <p class="tagline">Contemporary Israeli Cuisine<br>Fire, Intuition &amp; Precision</p>
+  <p class="creds">Le Cordon Bleu &nbsp;·&nbsp; OCD Alumni</p>
+
+  <!-- Divider -->
+  <div class="rule">
+    <div class="rule-line"></div>
+    <span class="rule-flame" style="font-size:0.5rem;">&#x2605;</span>
+    <div class="rule-line"></div>
+  </div>
+
+  <!-- Action buttons -->
+  <div class="actions">
+
+    <a class="btn btn-wa"
+       href="https://wa.me/972507407075?text=Hi%20Nof%2C%20I%E2%80%99d%20love%20to%20book%20a%20culinary%20experience!"
+       target="_blank" rel="noopener noreferrer">
+      <i class="fa-brands fa-whatsapp"></i>
+      Book an Experience
+    </a>
+
+    <div class="btn-row">
+      <a class="btn btn-ghost" href="mailto:Nof.shelly@gmail.com">
+        <i class="fa-regular fa-envelope"></i>
+        Email Me
+      </a>
+      <a class="btn btn-ghost"
+         href="https://www.instagram.com/nof_shelly?igsh=a2U1YmRmczEzaWZy&utm_source=qr"
+         target="_blank" rel="noopener noreferrer">
+        <i class="fa-brands fa-instagram"></i>
+        Instagram
+      </a>
+    </div>
+
+    <a class="btn btn-ghost" href="tel:+972507407075">
+      <i class="fa-solid fa-phone"></i>
+      Call Directly
+    </a>
+
+  </div>
+
+  <p class="foot">Chef · Tel Aviv, Israel</p>
+</div>
+
+<script>
+  /* ── Ember particles ── */
+  const stage  = document.getElementById('embers');
+  const palette = ['#c98a3c','#e8a94e','#d4722a','#f0c060','#a05520','#ffd080'];
+
+  function spawnEmber() {
+    const el   = document.createElement('div');
+    el.className = 'ember';
+    const sz   = Math.random() * 4 + 1.5;
+    const dur  = Math.random() * 9 + 7;
+    const dly  = Math.random() * 4;
+    const drift = (Math.random() - 0.5) * 140;
+    const col  = palette[Math.floor(Math.random() * palette.length)];
+    el.style.cssText = [
+      `width:${sz}px`,
+      `height:${sz}px`,
+      `left:${Math.random()*100}%`,
+      `background:${col}`,
+      `box-shadow:0 0 ${sz*2.5}px ${col}`,
+      `animation-duration:${dur}s`,
+      `animation-delay:${dly}s`,
+      `--d:${drift}px`
+    ].join(';');
+    stage.appendChild(el);
+    setTimeout(() => el.remove(), (dur + dly + 0.5) * 1000);
+  }
+
+  for (let i = 0; i < 22; i++) spawnEmber();
+  setInterval(spawnEmber, 650);
+
+  /* ── Touch ripple ── */
+  document.querySelectorAll('.btn').forEach(btn => {
+    const fire = e => {
+      const r   = btn.getBoundingClientRect();
+      const cx  = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+      const cy  = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+      const rip = document.createElement('span');
+      rip.className = 'ripple';
+      const size = Math.max(r.width, r.height);
+      rip.style.cssText = `width:${size}px;height:${size}px;left:${cx-size/2}px;top:${cy-size/2}px`;
+      btn.appendChild(rip);
+      setTimeout(() => rip.remove(), 600);
+    };
+    btn.addEventListener('click',      fire);
+    btn.addEventListener('touchstart', fire, { passive: true });
+  });
+</script>
+</body>
+</html>
