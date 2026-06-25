@@ -29,7 +29,7 @@
     }
 
     html, body {
-      height: 100%;
+      min-height: 100%;
       background: #090807;
       display: flex;
       align-items: center;
@@ -334,6 +334,95 @@
       color: var(--txt-muted);
     }
 
+
+    /* ── Experience Cards ── */
+    .exp-section { margin-top: 28px; }
+
+    .exp-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .exp-card {
+      position: relative;
+      display: block;
+      height: 148px;
+      border-radius: 16px;
+      overflow: hidden;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      transition: transform 0.32s cubic-bezier(0.22,1,0.36,1),
+                  box-shadow 0.32s cubic-bezier(0.22,1,0.36,1);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .exp-card:hover  { transform: translateY(-3px) scale(1.01); box-shadow: 0 14px 40px rgba(0,0,0,0.55), 0 0 22px rgba(201,138,60,0.14); }
+    .exp-card:active { transform: scale(0.98); }
+
+    .exp-bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      transition: transform 0.5s ease;
+    }
+    .exp-card:hover .exp-bg { transform: scale(1.06); }
+
+    /* placeholder gradients — replaced when images are added */
+    .exp-bg-tribe  { background: linear-gradient(135deg, #2a1505 0%, #5c2e08 45%, #8a4a18 100%); }
+    .exp-bg-events { background: linear-gradient(135deg, #0c1420 0%, #182030 50%, #1e2d40 100%); }
+
+    .exp-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to left, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.52) 50%, rgba(0,0,0,0.80) 100%);
+    }
+
+    .exp-content {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-end;
+      padding: 0 22px;
+      text-align: right;
+      direction: rtl;
+    }
+
+    .exp-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: 0.01em;
+      line-height: 1.2;
+      margin-bottom: 5px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.6);
+    }
+
+    .exp-sub {
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.62);
+      margin-bottom: 12px;
+    }
+
+    .exp-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.65rem;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--amber-lt);
+      border-bottom: 1px solid rgba(201,138,60,0.45);
+      padding-bottom: 2px;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .exp-card:hover .exp-cta { color: #fff; border-color: rgba(255,255,255,0.55); }
+
     /* ── Mobile tweaks ── */
     @media (max-width: 360px) {
       .card { padding: 44px 22px 36px; }
@@ -413,6 +502,46 @@
       Call Directly
     </a>
 
+  </div>
+
+
+  <!-- ── Experience Cards ── -->
+  <div class="exp-section">
+    <div class="rule" style="margin-bottom: 20px;">
+      <div class="rule-line"></div>
+      <span class="rule-flame" style="font-size:0.5rem;">&#x2605;</span>
+      <div class="rule-line"></div>
+    </div>
+
+    <div class="exp-cards">
+
+      <!-- ארוחת השבט -->
+      <a class="exp-card"
+         href="https://ontopo.com/he/il/eilat/page/11705505"
+         target="_blank" rel="noopener noreferrer">
+        <div class="exp-bg exp-bg-tribe" id="bg-tribe"></div>
+        <div class="exp-overlay"></div>
+        <div class="exp-content">
+          <h3 class="exp-title">ארוחת השבט</h3>
+          <p class="exp-sub">חוויה קולינרית ייחודית &middot; איילת</p>
+          <span class="exp-cta">הזמן מקום &#x2190;</span>
+        </div>
+      </a>
+
+      <!-- אירועים פרטיים -->
+      <a class="exp-card"
+         href="https://wa.me/972507407075?text=%D7%A9%D7%9C%D7%95%D7%9D%20%D7%A0%D7%95%D7%A3%21%20%D7%90%D7%A0%D7%97%D7%A0%D7%95%20%D7%9E%D7%AA%D7%A2%D7%A0%D7%99%D7%99%D7%A0%D7%99%D7%9D%20%D7%91%D7%90%D7%99%D7%A8%D7%95%D7%A2%20%D7%A4%D7%A8%D7%98%D7%99%20%D7%94%D7%9B%D7%95%D7%9C%D7%9C%3A"
+         target="_blank" rel="noopener noreferrer">
+        <div class="exp-bg exp-bg-events" id="bg-events"></div>
+        <div class="exp-overlay"></div>
+        <div class="exp-content">
+          <h3 class="exp-title">אירועים פרטיים</h3>
+          <p class="exp-sub">חתונות &middot; בר&#x2F;בת מצווה &middot; קייטרינג</p>
+          <span class="exp-cta">שלח הודעה &#x2190;</span>
+        </div>
+      </a>
+
+    </div>
   </div>
 
   <p class="foot">Chef · Eilat, Israel</p>
